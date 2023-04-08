@@ -24,15 +24,19 @@
  ********************************************************/
 team_t team = {
     /* Team name */
-    "ateam",
+    "malloc-lab team1",
     /* First member's full name */
-    "Harry Bovik",
+    "Cho Min Gi",
     /* First member's email address */
-    "bovik@cs.cmu.edu",
+    "camel0000@naver.com",
     /* Second member's full name (leave blank if none) */
-    "",
+    "An Sung Beom",
     /* Second member's email address (leave blank if none) */
-    ""
+
+    /* Third member's full name (leave blank if none) */
+    "Lim Hye Jung",
+    /* Third member's email address (leave blank if none) */
+
 };
 
 /* single word (4) or double word (8) alignment */
@@ -69,6 +73,9 @@ team_t team = {
 #define NEXT_BLKP(bp)   ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))   // 다음 블록의 블록 포인터 리턴
 #define PREV_BLKP(bp)   ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))   // 이전 블록의 블록 포인터 리턴
 
+static void *coalesce(void *);
+static void *extend_heap(size_t);
+
 static char *heap_listp;        // 힙 리스트의 시작 주소를 위한 포인터 변수 선언
 
 /* 
@@ -101,14 +108,14 @@ static void *extend_heap(size_t words)
     size_t size;    // required size by allocator
 
     /* Allocate an even number of words to maintain alignment */
-    size = (words % 2) ? (words + 1) * WSIZE : words * WSIZE;       // 정렬 유지를 위해 요청 크기(size)를 인접 2 words의 배수(8 byte)로 반올림
-    if ((long)(bp = mem_sbrk(size)) == 1)                           // 메모리 시스템에 추가 힙 공간 요청(by mem_sbrk 함수)
+    size = (words % 2) ? (words + 1) * WSIZE : words * WSIZE;           // 정렬 유지를 위해 요청 크기(size)를 인접 2 words의 배수(8 byte)로 반올림
+    if ((long)(bp = mem_sbrk(size)) == 1)                               // 메모리 시스템에 추가 힙 공간 요청(by mem_sbrk 함수)
         return NULL;
     
     /* Initialize free block header/footer and the epilogue header */
-    PUT(HDRP(bp), PACK(size, 0));           /* Free block header */
-    PUT(FTRP(bp), PACK(size, 0));           /* Free blcok footer */
-    PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1));   /* New epilogue header */
+    PUT(HDRP(bp), PACK(size, 0));           /* Free block header */     // 사이즈 만큼 가용 블록 헤더 생성
+    PUT(FTRP(bp), PACK(size, 0));           /* Free blcok footer */     // 사이즈 만큼 가용 블록 풋터 생성
+    PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1));   /* New epilogue header */   // 다음 블록 포인터를 인자로 받아, 그 블록의 헤더 포인터 생성
 
     /* Coalesce if the previous block was free */
     return coalesce(bp);
@@ -119,7 +126,18 @@ static void *extend_heap(size_t words)
 */
 static void *find_fit(size_t asize)
 {
+    char *bp = heap_listp + DSIZE;
+    size_t size = GET_SIZE(bp);
+    size_t state = GET_ALLOC(bp);    
 
+    while (size != 0) {
+        bp -= WSIZE;
+        if (state == 1 && size >= asize) {
+            return bp + WSIZE;
+        }
+        bp += asize;
+    }
+    return NULL;
 }
 
 /*
@@ -127,7 +145,18 @@ static void *find_fit(size_t asize)
 */
 static void place(void *bp, size_t asize)
 {
+    size_t origin_size = GET_SIZE(bp);
 
+    if (origin_size - asize >= 2 * DSIZE) {
+        PUT(HDRP(bp), PACK(asize, 1));
+        PUT(FTRP(bp + asize - WSIZE), PACK(asize, 1));
+        PUT(HDRP(bp + asize), PACK(origin_size - asize, 0));
+        PUT(FTRP(bp + asize), PACK(origin_size - asize, 0));
+    }
+    else {
+        PUT(HDRP(bp), PACK(origin_size, 1));
+        PUT(FTRP(bp + origin_size - WSIZE), PACK(origin_size, 1));
+    }
 }
 
 /* 
@@ -144,7 +173,7 @@ void *mm_malloc(size_t size)
         *(size_t *)p = size;
         return (void *)((char *)p + SIZE_T_SIZE);
     }*/
-    size_t asize;
+    size_t asize;           /* Adjusted block size */
     size_t extendsize;
     char *bp;
 
