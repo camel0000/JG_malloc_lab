@@ -134,7 +134,7 @@ static void *find_fit(size_t asize)
     size_t size = GET_SIZE(HDRP(bp));
     size_t state = GET_ALLOC(HDRP(bp));
 
-    while (1) {
+    /*while (1) {
         if (bp > (char *)mem_heap_hi()) {
             return NULL;
         }
@@ -144,7 +144,17 @@ static void *find_fit(size_t asize)
         bp += size;
         state = GET_ALLOC(bp - WSIZE);
         size = GET_SIZE(bp - WSIZE);
+    }*/
+
+    while (GET_SIZE(HDRP(bp)) != 0) {
+        if (state == 0 && size >= asize) {
+            return bp;
+        }
+        bp += size;
+        state = GET_ALLOC(bp - WSIZE);
+        size = GET_SIZE(bp - WSIZE);
     }
+    
     return NULL;
 }
 
