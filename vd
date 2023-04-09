@@ -1,0 +1,78 @@
+[33mcommit 525f5555eae4db0436f733872988937e7da97e73[m[33m ([m[1;36mHEAD -> [m[1;32mimplicit[m[33m)[m
+Author: camel0000 <camel0000@naver.com>
+Date:   Sun Apr 9 06:36:43 2023 +0000
+
+    Implicit completed
+
+[33mcommit ad875eeccbec69627870adf2763a37b6c3926c56[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m
+Author: camel0000 <camel0000@naver.com>
+Date:   Sun Apr 9 05:22:01 2023 +0000
+
+    Implicit: completed, find_fit() mod, mm_realloc() mod
+
+[33mcommit a11d05ceb9b2cbf5d692932822a7c21be1a44fc3[m
+Author: camel0000 <camel0000@naver.com>
+Date:   Sun Apr 9 04:52:59 2023 +0000
+
+    implicit: expt. 'randoms' -> out of memory Ver.
+
+[33mcommit 93e38833e33d6d3b373aefebe7c112343570e597[m
+Author: camel0000 <camel0000@naver.com>
+Date:   Sat Apr 8 15:55:30 2023 +0000
+
+    04.09
+
+[33mcommit 4f9e4922fb93c04a12e701eff545d092eaedd028[m
+Author: camel0000 <camel0000@naver.com>
+Date:   Sat Apr 8 08:38:24 2023 +0000
+
+    made find_fit / place func
+
+[33mcommit 16e65fd7bcd4a019a3972c91d1f8f9de2564fa3e[m
+Author: camel0000 <camel0000@naver.com>
+Date:   Fri Apr 7 20:53:04 2023 +0000
+
+    implilcit first commit
+
+[33mcommit becb6a18b974e60a8b089c5c2f329aa0892b8c40[m
+Merge: 8941b04 c36526d
+Author: Joo-Won Jung <sanori@gmail.com>
+Date:   Wed Sep 8 15:53:14 2021 +0900
+
+    Merge branch 'chore/cleanup' into main
+
+[33mcommit c36526d313da22840edcf6418e9166e02fad6d0e[m
+Author: Joo-Won Jung <sanori@gmail.com>
+Date:   Wed Sep 8 15:52:47 2021 +0900
+
+    chore: add .gitignore for C
+
+[33mcommit c97018cb9031c4471043e060285a354e18926567[m
+Author: Joo-Won Jung <sanori@gmail.com>
+Date:   Wed Sep 8 15:51:25 2021 +0900
+
+    chore: remove obj files
+
+[33mcommit 8941b045fc053600ce37ce8bdb81324af5930e9d[m
+Author: Bumkyu Lee <bumkyu.lee@gmail.com>
+Date:   Mon Jan 11 15:17:55 2021 +0900
+
+    traces 추가
+
+[33mcommit 92350e51d431f7d570a2b68b30db84b34d31d674[m
+Author: Bumkyu Lee <bumkyu.lee@gmail.com>
+Date:   Mon Jan 11 15:15:36 2021 +0900
+
+    Update config.h
+
+[33mcommit 133549dc6593bddae8419f57b33ee2064e6d93bd[m
+Author: Bumkyu Lee <bumkyu.lee@gmail.com>
+Date:   Mon Jan 11 15:11:26 2021 +0900
+
+    traces 경로 업데이트
+
+[33mcommit 5b1f7782bb598ed9414e8fb992f53336cf8c5191[m
+Author: Bumkyu Lee <bumkyu.lee@gmail.com>
+Date:   Mon Jan 11 00:07:37 2021 +0900
+
+    Initial commit
