@@ -126,16 +126,15 @@ static void *extend_heap(size_t words)
 */
 static void *find_fit(size_t asize)
 {
-    char *bp = heap_listp;
-    size_t size = GET_SIZE(bp);
-    size_t state = GET_ALLOC(bp);
+    char *bp = heap_listp + DSIZE;
+    size_t size = GET_SIZE(HDRP(bp));
+    size_t state = GET_ALLOC(HDRP(bp));
 
-    while (GET_SIZE(HDRP(bp)) > 0) {
+    while (1) {
+        if (bp > (char *)mem_heap_hi()) {
+            return NULL;
+        }
         if (state == 0 && size >= asize) {
-            PUT(bp - WSIZE, PACK(asize, 1));
-            PUT(bp + asize - DSIZE, PACK(asize, 1));
-            PUT(bp + asize - WSIZE, PACK(size - asize, 0));
-            PUT(bp + size - DSIZE, PACK(size - asize, 0));
             return bp;
         }
         bp += size;
@@ -170,14 +169,6 @@ static void place(void *bp, size_t asize)
  */
 void *mm_malloc(size_t size)
 {
-    /*int newsize = ALIGN(size + SIZE_T_SIZE);
-    void *p = mem_sbrk(newsize);
-    if (p == (void *)-1)
-	return NULL;
-    else {
-        *(size_t *)p = size;
-        return (void *)((char *)p + SIZE_T_SIZE);
-    }*/
     size_t asize;           /* Adjusted block size */
     size_t extendsize;
     char *bp;
@@ -257,31 +248,17 @@ static void *coalesce(void *bp)
  */
 void *mm_realloc(void *ptr, size_t size)
 {
-    void *oldptr = ptr;
+    void *oldptr = ptr;                                     // 재할당 받을 블록의 헤더 포인터
     void *newptr;
     size_t copySize;
     
-    newptr = mm_malloc(size);
+    newptr = mm_malloc(size);                               // 요청 가용 블록 할당하여 블록 헤더 포인터 재지정
     if (newptr == NULL)
       return NULL;
-    copySize = *(size_t *)((char *)oldptr - SIZE_T_SIZE);
-    if (size < copySize)
-      copySize = size;
-    memcpy(newptr, oldptr, copySize);
-    mm_free(oldptr);
+    copySize = *(size_t *)((char *)oldptr - SIZE_T_SIZE);   // old allocated block의 size
+    if (size < copySize)            // requested size < old size
+      copySize = size;              // old size <- requested size 갱신
+    memcpy(newptr, oldptr, size);   // newptr에 oldptr의 값을 size 크기 만큼 복사
+    mm_free(oldptr);                // old allocated block => free
     return newptr;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
