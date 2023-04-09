@@ -124,36 +124,18 @@ static void *extend_heap(size_t words)
 /*
 * find_fit - Search of the implicit free list
 */
-/*static void *find_fit(size_t asize)
-{
-    char *bp = heap_listp + WSIZE;
-    size_t size = GET_SIZE(bp);
-    size_t state = GET_ALLOC(bp);
-
-    while (size != 0) {
-        if (state == 0 && size >= asize) {
-            return bp;
-        }
-        bp += size;
-        state = GET_ALLOC(bp);
-        size = GET_SIZE(bp);
-    }
-    return NULL;
-}*/
 static void *find_fit(size_t asize)
 {
-    char *bp = heap_listp + WSIZE;
+    char *bp = heap_listp;
     size_t size = GET_SIZE(bp);
     size_t state = GET_ALLOC(bp);
 
-    while (size < asize && GET_SIZE(FTRP(bp) + WSIZE) != 0) {
+    while (GET_SIZE(HDRP(bp)) > 0) {
         if (state == 0 && size >= asize) {
             PUT(bp - WSIZE, PACK(asize, 1));
             PUT(bp + asize - DSIZE, PACK(asize, 1));
-
             PUT(bp + asize - WSIZE, PACK(size - asize, 0));
             PUT(bp + size - DSIZE, PACK(size - asize, 0));
-
             return bp;
         }
         bp += size;
@@ -168,12 +150,11 @@ static void *find_fit(size_t asize)
 */
 static void place(void *bp, size_t asize)
 {
-    size_t origin_size = GET_SIZE(bp - WSIZE);      // 전체 크기
+    size_t origin_size = GET_SIZE(bp - WSIZE);
 
     if (origin_size - asize >= 2 * DSIZE) {
         PUT(HDRP(bp), PACK(asize, 1));
         PUT(FTRP(bp), PACK(asize, 1));
-
         PUT(HDRP(bp + asize), PACK(origin_size - asize, 0));
         mm_free(bp + asize);
     }
