@@ -1,4 +1,8 @@
 /*
+* Explicit_malloc_lab
+*/
+
+/*
  * mm-naive.c - The fastest, least memory-efficient malloc package.
  * 
  * In this naive approach, a block is allocated by simply incrementing
@@ -73,10 +77,17 @@ team_t team = {
 #define NEXT_BLKP(bp)   ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))   // 다음 블록의 블록 포인터 리턴
 #define PREV_BLKP(bp)   ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))   // 이전 블록의 블록 포인터 리턴
 
+#define PRED_LOC(bp) HDRP(bp)+WSIZE // prev가 들어갈 주소
+#define SUCC_LOC(bp) HDRP(bp)+DSIZE // succ가 들어갈 주소
+#define PRED(bp) *(char *)PRED_LOC(bp) // pred
+#define SUCC(bp) *(char *)SUCC_LOC(bp)
+
+
 static void *coalesce(void *);
 static void *extend_heap(size_t);
 
 static char *heap_listp;        // 힙 리스트의 시작 주소를 위한 포인터 변수 선언
+void *root = NULL; // root 포인터 선언
 
 /* 
  * mm_init - initialize the malloc package.
@@ -96,6 +107,12 @@ int mm_init(void)
     /* Extend the empty heap with a free block of CHUNKSIZE bytes */
     if (extend_heap(CHUNKSIZE / WSIZE) == NULL)             // extend_heap 호출 -> 힙을 CHUNKSIZE 바이트로 확장, initial free block 생성(NULL 초기화)
         return -1;
+    
+    void *start = heap_listp + DSIZE;
+    PUT(HDRP(start), PACK(CHUNKSIZE, 0));
+    PUT(FTRP(start), PACK(CHUNKSIZE, 0));
+    PUT(PRED_LOC(start), NULL);
+    PUT(SUCC_LOC(start), heap_listp);
     return 0;                                               // 할당기 초기화 완료, application으로부터 할당과 반환 요청 받을 준비 완료
 }
 
@@ -106,16 +123,23 @@ static void *extend_heap(size_t words)
 {
     char *bp;
     size_t size;    // required size by allocator
+    char *new_bp = bp + WSIZE;
 
     /* Allocate an even number of words to maintain alignment */
     size = (words % 2) ? (words + 1) * WSIZE : words * WSIZE;           // 정렬 유지를 위해 요청 크기(size)를 인접 2 words의 배수(8 byte)로 반올림
     if ((long)(bp = mem_sbrk(size)) == 1)                               // 메모리 시스템에 추가 힙 공간 요청(by mem_sbrk 함수)
         return NULL;
     
-    /* Initialize free block header/footer and the epilogue header */
-    PUT(HDRP(bp), PACK(size, 0));           /* Free block header */     // 사이즈 만큼 가용 블록 헤더 생성
-    PUT(FTRP(bp), PACK(size, 0));           /* Free blcok footer */     // 사이즈 만큼 가용 블록 풋터 생성
-    PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1));   /* New epilogue header */   // 다음 블록 포인터를 인자로 받아, 그 블록의 헤더 포인터 생성
+    if(bp == heap_listp + DSIZE) {                                      // 첫 extension일 경우, bp 반환
+        return bp;
+    }
+    
+    PUT(HDRP(new_bp), PACK(size, 0)); // size만큼 가용블록 생성
+    PUT(FTRP(new_bp), PACK(size, 0)); 
+    PUT(PRED_LOC(new_bp), NULL);
+    // PUT(SUCC_LOC(new_bp), ); // 가장 마지막에 생성된 free 블록의 successor를 가리켜야 한다.
+    PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1)); // 새 에필로그의 헤더가 된다.
+    root = SUCC_LOC(bp);
 
     /* Coalesce if the previous block was free */
     return coalesce(bp);
@@ -126,22 +150,19 @@ static void *extend_heap(size_t words)
 */
 static void *find_fit(size_t asize)
 {
-    char *bp = heap_listp + DSIZE;
-    size_t size = GET_SIZE(HDRP(bp));
-    size_t state = GET_ALLOC(HDRP(bp));
-
-    while (1) {
-        if (bp > (char *)mem_heap_hi()) {
-            return NULL;
+    char *bp = root; // bp는 가장 첫번째 free 블록을 가리킨다.
+    size_t size = GET_SIZE(HDRP(bp - WSIZE)); // 헤더의 사이즈와 할당 여부 저장
+    
+    while (size < asize) {
+        if (bp == heap_listp) {
+            retrun NULL;
         }
-        if (state == 0 && size >= asize) {
-            return bp;
-        }
-        bp += size;
-        state = GET_ALLOC(bp - WSIZE);
-        size = GET_SIZE(bp - WSIZE);
+        bp = SUCC(bp);
+        size = GET_SIZE(HDRP(bp - WSIZE));
     }
-    return NULL;
+    return bp - WSIZE;
+    // PUT(HDRP(bp-WSIZE), PACK(asize, 1));
+    // PUT(FTRP(bp-WSIZE), PACK(asize, 1));
 }
 
 /*
@@ -179,14 +200,13 @@ void *mm_malloc(size_t size)
     
     /* Adjust block size to include overhead and alignment reqs. */
     if (size <= DSIZE)
-        asize = 2 * DSIZE;
+        asize = 3 * DSIZE;
     else
-        asize = DSIZE * ((size + (DSIZE) + (DSIZE - 1)) / DSIZE);
+        asize = DSIZE * ((size + (3 * DSIZE) + (DSIZE - 1)) / DSIZE);
     
     /* Search the free list for a fit */
     if ((bp = find_fit(asize)) != NULL) {
         place(bp, asize);
-        // printf("here! %p\n", bp);
         return bp;
     }
 
@@ -194,8 +214,7 @@ void *mm_malloc(size_t size)
     extendsize = MAX(asize, CHUNKSIZE);
     if ((bp = extend_heap(extendsize / WSIZE)) == NULL)
         return NULL;
-    place(bp, asize);
-    // printf("there! %p\n", bp);
+    place(bp, asize);       // extend and try allocation once more
     return bp;
 }
 
