@@ -113,6 +113,8 @@ int mm_init(void)
     PUT(FTRP(start), PACK(CHUNKSIZE, 0));
     PUT(PRED_LOC(start), NULL);
     PUT(SUCC_LOC(start), heap_listp);
+    root = SUCC_LOC(start);
+    
     return 0;                                               // 할당기 초기화 완료, application으로부터 할당과 반환 요청 받을 준비 완료
 }
 
@@ -129,17 +131,6 @@ static void *extend_heap(size_t words)
     size = (words % 2) ? (words + 1) * WSIZE : words * WSIZE;           // 정렬 유지를 위해 요청 크기(size)를 인접 2 words의 배수(8 byte)로 반올림
     if ((long)(bp = mem_sbrk(size)) == 1)                               // 메모리 시스템에 추가 힙 공간 요청(by mem_sbrk 함수)
         return NULL;
-    
-    if(bp == heap_listp + DSIZE) {                                      // 첫 extension일 경우, bp 반환
-        return bp;
-    }
-    
-    PUT(HDRP(new_bp), PACK(size, 0)); // size만큼 가용블록 생성
-    PUT(FTRP(new_bp), PACK(size, 0)); 
-    PUT(PRED_LOC(new_bp), NULL);
-    // PUT(SUCC_LOC(new_bp), ); // 가장 마지막에 생성된 free 블록의 successor를 가리켜야 한다.
-    PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1)); // 새 에필로그의 헤더가 된다.
-    root = SUCC_LOC(bp);
 
     /* Coalesce if the previous block was free */
     return coalesce(bp);
@@ -155,14 +146,12 @@ static void *find_fit(size_t asize)
     
     while (size < asize) {
         if (bp == heap_listp) {
-            retrun NULL;
+            return NULL;
         }
         bp = SUCC(bp);
         size = GET_SIZE(HDRP(bp - WSIZE));
     }
     return bp - WSIZE;
-    // PUT(HDRP(bp-WSIZE), PACK(asize, 1));
-    // PUT(FTRP(bp-WSIZE), PACK(asize, 1));
 }
 
 /*
@@ -170,15 +159,18 @@ static void *find_fit(size_t asize)
 */
 static void place(void *bp, size_t asize)
 {
-    size_t origin_size = GET_SIZE(bp - WSIZE);
-
-    if (origin_size - asize >= 2 * DSIZE) {
+    size_t origin_size = GET_SIZE(HDRP(bp));        // 할당 가능한 메모리 블록의 사이즈 저장
+    if (origin_size - asize >= 3 * DSIZE) {         // 할당 가능한 블록에서 할당할 블록의 사이즈 차가 쿼드워드보다 크거나 같다면 안쓰는 부분을 가용상태로
+        PUT(SUCC_LOC(PRED(bp)), SUCC(bp));
+        PUT(PRED_LOC(SUCC(bp)), PRED(bp));
         PUT(HDRP(bp), PACK(asize, 1));
         PUT(FTRP(bp), PACK(asize, 1));
         PUT(HDRP(bp + asize), PACK(origin_size - asize, 0));
         mm_free(bp + asize);
+        root += asize;
     }
-    else {
+    else {                                          // 안쓰는 블록을 쪼개봤자 필요가 없다면, 전부 할당한다.
+        root = SUCC(bp);
         PUT(HDRP(bp), PACK(origin_size, 1));
         PUT(FTRP(bp), PACK(origin_size, 1));
     }
@@ -202,7 +194,7 @@ void *mm_malloc(size_t size)
     if (size <= DSIZE)
         asize = 3 * DSIZE;
     else
-        asize = DSIZE * ((size + (3 * DSIZE) + (DSIZE - 1)) / DSIZE);
+        asize = DSIZE * ((size + (2 * DSIZE) + (DSIZE - 1)) / DSIZE);
     
     /* Search the free list for a fit */
     if ((bp = find_fit(asize)) != NULL) {
@@ -221,13 +213,17 @@ void *mm_malloc(size_t size)
 /*
  * mm_free - Freeing a block does nothing.
  */
-void mm_free(void *ptr)
+void mm_free(void *bp)
 {
-    size_t size = GET_SIZE(HDRP(ptr));
+    // bp에 할당된 메모리 블록의 헤더에서 정보를 가져와 size 변수에 저장
+    size_t size = GET_SIZE(HDRP(bp));
 
-    PUT(HDRP(ptr), PACK(size, 0));
-    PUT(FTRP(ptr), PACK(size, 0));
-    coalesce(ptr);
+    PUT(HDRP(bp), PACK(size, 0)); // bp에 할당된 메모리 블록의 헤더 가용상태로 변경
+    PUT(FTRP(bp), PACK(size, 0)); // bp에 할당된 메모리 블록의 풋터 가용상태로 변경
+    PUT(PRED(bp), NULL);
+    PUT(SUCC(bp), SUCC(root));
+    root = SUCC_LOC(bp);
+    coalesce(bp); // bp에 할당된 메모리 블록과 인접한 블록들을 병합하는 함수 호출
 }
 
 static void *coalesce(void *bp)
