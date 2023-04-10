@@ -145,7 +145,7 @@ static void *find_fit(size_t asize)
     size_t size = GET_SIZE(HDRP(bp - WSIZE)); // 헤더의 사이즈와 할당 여부 저장
     
     while (size < asize) {
-        if (bp == heap_listp) {
+        if (SUCC(bp) == heap_listp) {
             return NULL;
         }
         bp = SUCC(bp);
