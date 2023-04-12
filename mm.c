@@ -135,6 +135,13 @@ static void *find_fit(size_t asize)
     char *bp = root; // bp는 가장 첫번째 free 블록을 가리킨다.
     size_t size = GET_SIZE(HDRP(bp - WSIZE)); // 헤더의 사이즈와 할당 여부 저장
 
+    // for(bp = root; GET_ALLOC(HDRP(bp - WSIZE)) != 1; bp = NEXT_SUCC(bp - WSIZE)) {
+    //     if (asize <= GET_SIZE(HDRP(bp - WSIZE))) {
+    //         return bp - WSIZE;
+    //     }
+    // }
+    // return NULL;
+    
     while (size < asize) {
         if (NEXT_SUCC(bp - WSIZE) == heap_listp) {
             return NULL;
@@ -147,7 +154,7 @@ static void *find_fit(size_t asize)
     return bp - WSIZE;
 }
 
-static void place(void *bp, size_t asize) // 수정 필요 
+static void place(void *bp, size_t asize)
 {
     size_t origin_size = GET_SIZE(HDRP(bp)); // 할당 가능한 메모리 블록의 사이즈 저장
     char *new_bp = bp + asize;
@@ -363,23 +370,32 @@ void mm_free(void *bp)
     PUT(FTRP(bp), PACK(size, 0)); // bp에 할당된 메모리 블록의 풋터 가용상태로 변경
     char *pred; // coal될 블록의 pred 안의 값
     char *succ; // coal될 블록의 succ 안의 값
-    
+    char *origin_root_pred = PRED_LOC(root-WSIZE); //원래 root의 pred
+    char *origin_root_succ = SUCC_LOC(root-WSIZE); //원래 root의 succ
     bp = free_coalesce(bp, pred, succ);
-    if(NEXT_SUCC(root-WSIZE) == heap_listp)
+    root = SUCC_LOC(bp); // coal되고 갱신된 bp로 root 갱신
+
+    if(NEXT_SUCC(origin_root_pred) == heap_listp) // coal된 후에도 free 블록 1개
     {
         PUT(SUCC_LOC(bp), heap_listp);
         PUT(PRED_LOC(bp), heap_listp - WSIZE); //POST_PRED(root-WSIZE) = heap_list - WSIZE
-        root = SUCC_LOC(bp);
+        // root = SUCC_LOC(bp);
     }
-    else
+    else if(GET_ALLOC(NEXT_BLKP(bp)) == 1 && GET_ALLOC(PREV_BLKP(bp)) == 1)
+    {
+        PUT(SUCC_LOC(bp), origin_root_succ); // bp succ에 원래 root 넣기
+        PUT(origin_root_pred, PRED_LOC(bp)); // 원래 root pred가 새로운 블록 pred 가리키기
+        PUT(PRED_LOC(bp), heap_listp-WSIZE); // POST_PRED(root-WSIZE) == heap_listp-wsize
+    }
+    else // coal된 후에 새로운 블록이 생김
     {
         // coal되기 전에 앞 뒤 블록 연결
         PUT(SUCC_LOC(pred), succ);
         PUT(PRED_LOC(succ-WSIZE), pred);
-        PUT(SUCC_LOC(bp), root); // bp succ에 원래 root 넣기
-        PUT(PRED_LOC(root-WSIZE), PRED_LOC(bp)); // root pred가 새로운 블록 pred 가리키기
-        PUT(PRED_LOC(bp), POST_PRED(root-WSIZE));// POST_PRED(root-WSIZE) == heap_listp-wsize
-        root = SUCC_LOC(bp);
+        PUT(SUCC_LOC(bp), origin_root_succ); // bp succ에 원래 root 넣기
+        PUT(origin_root_pred, PRED_LOC(bp)); // 원래 root pred가 새로운 블록 pred 가리키기
+        PUT(PRED_LOC(bp), heap_listp-WSIZE); // POST_PRED(root-WSIZE) == heap_listp-wsize
+        // root = SUCC_LOC(bp);
     }
 }
 
