@@ -132,8 +132,8 @@ static void *extend_heap(size_t words)
 // 할당하려고 하는 메모리가 들어갈 수 있는 블록 찾기
 static void *find_fit(size_t asize)
 {   // asize == 할당할 메모리 사이즈
-    char *bp = root; // bp는 가장 첫번째 free 블록을 가리킨다.
-    size_t size = GET_SIZE(HDRP(bp - WSIZE)); // 헤더의 사이즈와 할당 여부 저장
+    char *succ = root; // bp는 가장 첫번째 free 블록을 가리킨다.
+    size_t size = GET_SIZE(HDRP(succ - WSIZE)); // 헤더의 사이즈와 할당 여부 저장
 
     // for(bp = root; GET_ALLOC(HDRP(bp - WSIZE)) != 1; bp = NEXT_SUCC(bp - WSIZE)) {
     //     if (asize <= GET_SIZE(HDRP(bp - WSIZE))) {
@@ -141,17 +141,17 @@ static void *find_fit(size_t asize)
     //     }
     // }
     // return NULL;
-    
+
     while (size < asize) {
-        if (NEXT_SUCC(bp - WSIZE) == heap_listp) {
+        if (NEXT_SUCC(succ - WSIZE) == heap_listp) {
             return NULL;
         }
         // printf("while!\n");
-        bp = NEXT_SUCC(bp - WSIZE);
-        size = GET_SIZE(HDRP(bp - WSIZE));
+        succ = NEXT_SUCC(succ - WSIZE);
+        size = GET_SIZE(HDRP(succ - WSIZE));
     }
     // printf("no while\n");
-    return bp - WSIZE;
+    return succ - WSIZE;
 }
 
 static void place(void *bp, size_t asize)
