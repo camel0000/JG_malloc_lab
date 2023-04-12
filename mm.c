@@ -30,15 +30,15 @@ team_t team = {
     /* Team name */
     "malloc-lab team1",
     /* First member's full name */
-    "Cho Min Gi",
+    "MinkiCho",
     /* First member's email address */
     "camel0000@naver.com",
     /* Second member's full name (leave blank if none) */
-    "An Sung Beom",
+    "SungbeomAn",
     /* Second member's email address (leave blank if none) */
 
     /* Third member's full name (leave blank if none) */
-    "Lim Hye Jung",
+    "HyejungLim",
     /* Third member's email address (leave blank if none) */
 
 };
@@ -127,6 +127,7 @@ static void *extend_heap(size_t words)
 
 /*
 * find_fit - Search of the implicit free list
+* 할당 예정 메모리 size에 맞는 블록 찾기
 */
 static void *find_fit(size_t asize)
 {
@@ -134,6 +135,8 @@ static void *find_fit(size_t asize)
     size_t size = GET_SIZE(HDRP(bp));
     size_t state = GET_ALLOC(HDRP(bp));
 
+    // 두 while 문 모두 같은 성능의 작동 결과을 보임
+    // 1. 힙 영역의 마지막 주소를 이용(mem_heap_hi())하여 block pointer 위치 반환
     /*while (1) {
         if (bp > (char *)mem_heap_hi()) {
             return NULL;
@@ -146,6 +149,7 @@ static void *find_fit(size_t asize)
         size = GET_SIZE(bp - WSIZE);
     }*/
 
+    // 2. Epilogue 블록의 size 정보를 이용하여 while문 탈출 조건 성립
     while (GET_SIZE(HDRP(bp)) != 0) {
         if (state == 0 && size >= asize) {
             return bp;
@@ -154,12 +158,12 @@ static void *find_fit(size_t asize)
         state = GET_ALLOC(bp - WSIZE);
         size = GET_SIZE(bp - WSIZE);
     }
-    
     return NULL;
 }
 
 /*
 * place - Place the requested block at the beginning of the free block, splitting only if the size of the remainder would equal or exceed the minimum block size
+* 요청 받은 메모리를 적절한 위치의 가용 블록에 할당
 */
 static void place(void *bp, size_t asize)
 {
@@ -200,7 +204,6 @@ void *mm_malloc(size_t size)
     /* Search the free list for a fit */
     if ((bp = find_fit(asize)) != NULL) {
         place(bp, asize);
-        // printf("here! %p\n", bp);
         return bp;
     }
 
@@ -209,7 +212,6 @@ void *mm_malloc(size_t size)
     if ((bp = extend_heap(extendsize / WSIZE)) == NULL)
         return NULL;
     place(bp, asize);
-    // printf("there! %p\n", bp);
     return bp;
 }
 
@@ -225,29 +227,33 @@ void mm_free(void *ptr)
     coalesce(ptr);
 }
 
+/*
+* coalesce - Coalescing with boundary tags the adjacent blocks
+*/
 static void *coalesce(void *bp)
 {
     size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp)));
     size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp)));
     size_t size = GET_SIZE(HDRP(bp));
 
+    // 이전 블록 할당, 다음 블록 할당
     if (prev_alloc && next_alloc) {
         return bp;
     }
-
+    // 이전 블록 할당, 다음 블록 가용
     else if (prev_alloc && !next_alloc) {
         size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
         PUT(HDRP(bp), PACK(size, 0));
         PUT(FTRP(bp), PACK(size, 0));
     }
-
+    // 이전 블록 가용, 다음 블록 할당
     else if (!prev_alloc && next_alloc) {
         size += GET_SIZE(HDRP(PREV_BLKP(bp)));
         PUT(FTRP(bp), PACK(size, 0));
         PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
         bp = PREV_BLKP(bp);
     }
-
+    // 이전 블록 가용, 다음 블록 가용
     else {
         size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(FTRP(NEXT_BLKP(bp)));
         PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
