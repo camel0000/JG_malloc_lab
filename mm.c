@@ -323,7 +323,6 @@ static void *free_coalesce(void *bp, void *pred, void *succ) // 수정 필요
     size_t size = GET_SIZE(HDRP(bp)); // bp의 헤더에서 사이즈 정보 저장
     // case 1: 이전, 다음 블록 모두 할당된 상태면 bp 반환
     if (prev_alloc && next_alloc){
-        // root = SUCC_LOC(bp);
         return bp;
     }
     // case 2: 이전 블록 할당, 다음 블록 가용 상태라면
@@ -364,6 +363,7 @@ void mm_free(void *bp)
     PUT(FTRP(bp), PACK(size, 0)); // bp에 할당된 메모리 블록의 풋터 가용상태로 변경
     char *pred; // coal될 블록의 pred 안의 값
     char *succ; // coal될 블록의 succ 안의 값
+    
     bp = free_coalesce(bp, pred, succ);
     if(NEXT_SUCC(root-WSIZE) == heap_listp)
     {
