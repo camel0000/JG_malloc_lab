@@ -30,13 +30,13 @@ team_t team = {
     /* Team name */
     "1team",
     /* First member's full name */
-    "HaejeongLim",
+    "MinkiCho",
     /* First member's email address */
-    "a38722243@gmail.com",
+    "camel0000@naver.com",
     /* Second member's full name (leave blank if none) */
     "SeongbeomAhn",
     /* Second member's email address (leave blank if none) */
-    "MinkiCho"
+    "HaejeongLim"
 };
 
 #define WSIZE 4 // 워드 = 헤더 = 풋터 사이즈(bytes)
@@ -74,6 +74,7 @@ team_t team = {
 
 #define SIZE_T_SIZE (ALIGN(sizeof(size_t)))
 
+static void *free_coalesce(void *bp, void *pred, void *succ);
 static void *coalesce(void *bp);
 static void *extend_heap(size_t words);
 static void *find_fit(size_t asize);
@@ -105,7 +106,7 @@ int mm_init(void)
     PUT(PRED_LOC(start), heap_listp-WSIZE); // heap_listp-WSIZE가 제대로 안들어가고 있음
     PUT(SUCC_LOC(start), heap_listp);
     root = SUCC_LOC(start);
-    // printf("--------------------init----------------------\n");
+    printf("--------------------init----------------------\n");
     return 0;
 }
 // 새 가용 블록으로 힙 확장하기
@@ -136,11 +137,9 @@ static void *find_fit(size_t asize)
 
     if (NEXT_SUCC(bp - WSIZE) == heap_listp) {
         if (size >= asize) {
-            // printf("find in if\n");
             return bp - WSIZE;
         }
     }
-    // printf("NULL find\n");
     return NULL;
 }
 
@@ -152,7 +151,7 @@ static void place(void *bp, size_t asize) // 수정 필요
     
     if (origin_size - asize >= 3 * DSIZE) { // 할당 가능한 블록에서 할당할 블록의 사이즈 차가 쿼드워드보다 크거나 같다면 안쓰는 부분을 가용상태로
         if (POST_PRED(bp) == heap_listp-WSIZE && NEXT_SUCC(bp) == heap_listp) { // 블록 하나, 부분 할당
-            // printf("only one free\n");
+            printf("only one divided free\n");
             PUT(PRED_LOC(new_bp), heap_listp-WSIZE);
             PUT(SUCC_LOC(new_bp), heap_listp);
             PUT(HDRP(bp), PACK(asize, 1));
@@ -164,7 +163,7 @@ static void place(void *bp, size_t asize) // 수정 필요
         else{
             if(NEXT_SUCC(bp) == heap_listp) // 마지막 블록 부분할당
             {
-                // printf("last brk divide\n");
+                printf("last brk divide\n");
                 PUT(SUCC_LOC(new_bp), root);
                 PUT(PRED_LOC(new_bp), POST_PRED(root-WSIZE)); // POST_PRED(root-WSIZE) == heap_listp-wsize
                 PUT(SUCC_LOC(POST_PRED(bp)), NEXT_SUCC(bp));
@@ -176,7 +175,7 @@ static void place(void *bp, size_t asize) // 수정 필요
             }
             else if(POST_PRED(bp) == heap_listp-WSIZE) // 첫 블록 부분할당
             {
-                // printf("first brk divide\n");
+                printf("first brk divide\n");
                 PUT(SUCC_LOC(new_bp), NEXT_SUCC(bp));
                 PUT(PRED_LOC(new_bp), POST_PRED(bp)); // POST_PRED(root-WSIZE) == heap_listp-wsize
                 PUT(HDRP(bp), PACK(asize, 1));
@@ -187,7 +186,7 @@ static void place(void *bp, size_t asize) // 수정 필요
             }
             else // 중간블록 부분할당
             {
-                // printf("middle brk divide\n");
+                printf("middle brk divide\n");
                 PUT(SUCC_LOC(new_bp), root);
                 PUT(PRED_LOC(new_bp), POST_PRED(root-WSIZE)); // POST_PRED(root-WSIZE) == heap_listp-wsize
                 PUT(SUCC_LOC(POST_PRED(bp)), NEXT_SUCC(bp));
@@ -203,7 +202,7 @@ static void place(void *bp, size_t asize) // 수정 필요
     else { // 안쓰는 블록을 쪼개봤자 필요가 없다면, 전부 할당한다.
         if(NEXT_SUCC(bp) == heap_listp && POST_PRED(bp) == heap_listp-WSIZE) // free블록 하나이면서 전부 할당
         {
-            // printf("only one all free\n");
+            printf("only one all free\n");
             PUT(HDRP(bp), PACK(origin_size, 1));
             PUT(FTRP(bp), PACK(origin_size, 1)); 
             ex_bp = extend_heap(CHUNKSIZE/WSIZE);
@@ -214,7 +213,7 @@ static void place(void *bp, size_t asize) // 수정 필요
         else{ // 블록 여러개 전부 할당
             if (NEXT_SUCC(bp) == heap_listp)
             { // 마지막 블록 전체 할당
-                // printf("last brk all free\n");
+                printf("last brk all free\n");
                 PUT(HDRP(bp), PACK(origin_size, 1));
                 PUT(FTRP(bp), PACK(origin_size, 1));  
                 ex_bp = extend_heap(CHUNKSIZE/WSIZE);
@@ -225,14 +224,14 @@ static void place(void *bp, size_t asize) // 수정 필요
             }
             else if(POST_PRED(bp) == heap_listp-WSIZE) // 첫번째 블록 전체 할당
             {
-                // printf("first brk all free\n");
+                printf("first brk all free\n");
                 PUT(PRED_LOC(NEXT_SUCC(bp)-WSIZE), PRED_LOC(bp)); // PRED_LOC(bp) == heap_listp-WSIZE
                 PUT(HDRP(bp), PACK(origin_size, 1));
                 PUT(FTRP(bp), PACK(origin_size, 1));
                 root = NEXT_SUCC(bp);  
             }
             else{ // 중간 블록 전체 할당
-                // printf("middle brk all free\n");
+                printf("middle brk all free\n");
                 PUT(SUCC_LOC(POST_PRED(bp)), NEXT_SUCC(bp));
                 PUT(PRED_LOC(NEXT_SUCC(bp)-WSIZE), POST_PRED(bp));
                 PUT(HDRP(bp), PACK(origin_size, 1));
@@ -309,6 +308,44 @@ static void *coalesce(void *bp) // 수정 필요
     return bp;
 }
 
+static void *free_coalesce(void *bp, void *pred, void *succ) // 수정 필요
+{
+    size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp))); // 이전 블록의 헤더에서 할당 정보 저장
+    size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp))); // 다음 블록의 헤더에서 할당 정보 저장
+    size_t size = GET_SIZE(HDRP(bp)); // bp의 헤더에서 사이즈 정보 저장
+    // case 1: 이전, 다음 블록 모두 할당된 상태면 bp 반환
+    if (prev_alloc && next_alloc){
+        return bp;
+    }
+    // case 2: 이전 블록 할당, 다음 블록 가용 상태라면
+    else if(prev_alloc && !next_alloc){
+        size += GET_SIZE(HDRP(NEXT_BLKP(bp))); // 다음 블록의 헤더에서 사이즈 정보를 가져와 size에 저장
+        pred = GET((NEXT_BLKP(bp))); // 다음 블록의 prd
+        succ = GET((NEXT_BLKP(bp)+WSIZE)); // 다음 블록의 succ
+        PUT(HDRP(bp), PACK(size,0)); // bp의 헤더와 풋터의 사이즈를 통합한 사이즈로 변경, 가용상태로 변경
+        PUT(FTRP(bp), PACK(size,0));
+    }
+    // case 3: 이전 블록 가용, 다음 블록 할당 상태라면
+    else if(!prev_alloc && next_alloc){
+        size += GET_SIZE(HDRP(PREV_BLKP(bp))); // 이전 블록의 헤더에서 사이즈 정보를 가져와 size에 저장
+        pred = GET((PREV_BLKP(bp))); // 이전 블록의 prd
+        succ = GET((PREV_BLKP(bp)+WSIZE)); // 이전 블록의 succ
+        PUT(FTRP(bp), PACK(size,0)); // bp의 풋터 사이즈를 통합한 사이즈로 변경, 가용상태로 변경
+        PUT(HDRP(PREV_BLKP(bp)), PACK(size,0)); // 이전 블록의 헤더 사이즈를 통합한 사이즈로 변경, 가용상태로 변경
+        bp = PREV_BLKP(bp); //bp를 이전 블록으로 옮겨줌
+    }
+    // case 4: 양쪽 블록 모두 가용 상태라면
+    else{
+        size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(FTRP(NEXT_BLKP(bp))); // 양쪽 블로의 헤더에 저장된 사이즈 정보를 더해 size에 저장
+        pred = GET((PREV_BLKP(bp))); // 이전 블록의 pred
+        succ = GET((NEXT_BLKP(bp)+WSIZE)); // 다음 블록의 succ
+        PUT(HDRP(PREV_BLKP(bp)), PACK(size,0)); // 양쪽 블록의 헤더와 풋터 사이즈를 통합한 사이즈로 변경, 가용상태로 변경
+        PUT(FTRP(NEXT_BLKP(bp)), PACK(size,0));
+        bp = PREV_BLKP(bp); //bp를 이전 블록으로 옮겨줌
+    }
+    return bp;
+}
+
 // 블록을 반환
 void mm_free(void *bp)
 {
@@ -316,9 +353,9 @@ void mm_free(void *bp)
     size_t size = GET_SIZE(HDRP(bp));
     PUT(HDRP(bp), PACK(size, 0)); // bp에 할당된 메모리 블록의 헤더 가용상태로 변경
     PUT(FTRP(bp), PACK(size, 0)); // bp에 할당된 메모리 블록의 풋터 가용상태로 변경
-    char *pred = POST_PRED(bp); // coal될 블록의 pred 안의 값
-    char *succ = NEXT_SUCC(bp); // coal될 블록의 succ 안의 값
-    coalesce(bp);
+    char *pred; // coal될 블록의 pred 안의 값
+    char *succ; // coal될 블록의 succ 안의 값
+    free_coalesce(bp, pred, succ);
     if(NEXT_SUCC(root-WSIZE) == heap_listp)
     {
         PUT(SUCC_LOC(bp), NEXT_SUCC(root-WSIZE));
@@ -330,12 +367,11 @@ void mm_free(void *bp)
         // coal되기 전에 앞 뒤 블록 연결
         PUT(SUCC_LOC(pred), succ);
         PUT(PRED_LOC(succ-WSIZE), pred);
-        PUT(SUCC_LOC(bp), root);
-        PUT(PRED_LOC(root-WSIZE), PRED_LOC(bp)); // POST_PRED(root-WSIZE) == heap_listp-wsize
-        PUT(PRED_LOC(bp), POST_PRED(root-WSIZE));
+        PUT(SUCC_LOC(bp), root); // bp succ에 원래 root 넣기
+        PUT(PRED_LOC(root-WSIZE), PRED_LOC(bp)); // root pred가 새로운 블록 pred 가리키기
+        PUT(PRED_LOC(bp), POST_PRED(root-WSIZE));// POST_PRED(root-WSIZE) == heap_listp-wsize
         root = SUCC_LOC(bp);
     }
-    // bp에 할당된 메모리 블록과 인접한 블록들을 병합하는 함수 호출
 }
 
 void *mm_realloc(void *ptr, size_t size)
