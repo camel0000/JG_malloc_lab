@@ -1,14 +1,8 @@
 /*
- * mm-naive.c - The fastest, least memory-efficient malloc package.
- * 
- * In this naive approach, a block is allocated by simply incrementing
- * the brk pointer.  A block is pure payload. There are no headers or
- * footers.  Blocks are never coalesced or reused. Realloc is
- * implemented directly using mm_malloc and mm_free.
- *
- * NOTE TO STUDENTS: Replace this header comment with your own header
- * comment that gives a high level description of your solution.
- */
+* This is not my code.
+* Explicit free list way for malloc function
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -18,10 +12,7 @@
 #include "mm.h"
 #include "memlib.h"
 
-/*********************************************************
- * NOTE TO STUDENTS: Before you do anything else, please
- * provide your team information in the following struct.
- ********************************************************/
+
 team_t team = {
     /* Team name */
     "ateam",
@@ -72,14 +63,15 @@ team_t team = {
 #define PRED_LOC HDRP(bp)+WSIZE                                             // *prev가 들어갈 주소
 #define SUCC_LOC HDRP(bp)+DSIZE                                             // *succ이 들어갈 수조
 
-#define PRED *(char *)PRED_LOC(bp)                                          // *(char *)PRED_LOC(bp)
-#define SUCC *(char *)SUCC_LOC(bp)                                          // *(char *)SUCC_LOC(bp)
+#define PREV_PRED(bp) (GET(PRED_LOC(bp)))                                   // *(char *)PRED_LOC(bp)
+#define NEXT_SUCC(bp) (GET(SUCC_LOC(bp)))                                   // *(char *)SUCC_LOC(bp)
 
 
 static void *coalesce(void *);
 static void *extend_heap(size_t);
 
 static char *heap_listp;        // 힙 리스트의 시작 주소를 위한 포인터 변수 선언
+static char *linked_list_top;
 
 /* 
  * mm_init - initialize the malloc package.
@@ -95,6 +87,7 @@ int mm_init(void)
     PUT(heap_listp + (2 * WSIZE), PACK(DSIZE, 1));  /* Prologue footer */
     PUT(heap_listp + (3 * WSIZE), PACK(0, 1));      /* Epilogue header */
     heap_listp += (2 * WSIZE);
+    linked_list_top = NULL;
 
     /* Extend the empty heap with a free block of CHUNKSIZE bytes */
     if (extend_heap(CHUNKSIZE / WSIZE) == NULL)             // extend_heap 호출 -> 힙을 CHUNKSIZE 바이트로 확장, initial free block 생성(NULL 초기화)
